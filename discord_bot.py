@@ -27,32 +27,31 @@
 ## Also, check the channel’s own settings:
 
 ## Right-click the channel → Edit Channel → Permissions → ensure your bot’s role is allowed.
-
-
 import discord
 from discord.ext import tasks, commands
-from datetime import datetime, time, timedelta
-import asyncio
+from datetime import datetime
 
 # --- CONFIG ---
 TOKEN = "YOUR_BOT_TOKEN"
-CHANNEL_ID = your_channel_id  # Replace with your real channel ID
+CHANNEL_ID = 59250923850932  # your Discord channel ID
 
 clients = [
-    {"name": "John", "end_date": "2025-12-10"},
-    {"name": "Mia", "end_date": "2025-12-15"},
-    {"name": "Luca", "end_date": "2025-12-07"}
+    {"name": "User", "discord_id": 928309823095820952, "start_date": "2025-11-12", "end_date": "2025-12-12"},
+    {"name": "User", "discord_id": 234567890123456789, "start_date": "2025-10-01", "end_date": "2025-11-01"},
+    {"name": "User", "discord_id": 345678901234567890, "start_date": "2025-08-05", "end_date": "2026-02-05"},
 ]
 
-intents = discord.Intents.default()  # no privileged intents
+intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
     print(f"Bot logged in as {bot.user}")
-    send_daily_reminder.start()
+    check_clients.start()  # start the loop
 
-async def send_reminders():
+@tasks.loop(minutes=1)
+async def check_clients():
+    """Ping all clients with 5 days or less remaining every minute."""
     channel = await bot.fetch_channel(CHANNEL_ID)
     today = datetime.now().date()
 
@@ -60,22 +59,9 @@ async def send_reminders():
         end_date = datetime.strptime(client["end_date"], "%Y-%m-%d").date()
         days_left = (end_date - today).days
 
-        if days_left in [3, 4]:
-            await channel.send(f"Hey {client['name']}, only {days_left} days remain until payment is due!")
-
-@tasks.loop(hours=24)
-async def send_daily_reminder():
-    now = datetime.now()
-    target_time = time(18, 27)  # 6:25 PM
-    run_time = datetime.combine(now.date(), target_time)
-
-    if now > run_time:
-        run_time += timedelta(days=1)
-
-    wait_seconds = (run_time - now).total_seconds()
-    print(f"Next reminder in {wait_seconds / 60:.1f} minutes.")
-    await asyncio.sleep(wait_seconds)
-
-    await send_reminders()
+        if 0 < days_left <= 5:
+            await channel.send(
+                f"Hey <@{client['discord_id']}>, {days_left} days remain until your payment is due! 💸"
+            )
 
 bot.run(TOKEN)
